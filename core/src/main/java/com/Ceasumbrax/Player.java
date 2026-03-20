@@ -40,8 +40,6 @@ public class Player {
         playerSizeWidth = 38;
         playerSizeHeight = 48;
 
-        System.out.println("Heyy");
-
         playerImage = texture;
         playerImageSide = textureSide;
         playerImageUp = textureUp;
