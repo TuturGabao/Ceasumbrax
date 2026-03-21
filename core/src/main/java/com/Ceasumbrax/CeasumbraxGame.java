@@ -50,7 +50,7 @@ public class CeasumbraxGame extends ApplicationAdapter implements InputProcessor
         WIDTH = Gdx.graphics.getDisplayMode().width;
         HEIGHT = Gdx.graphics.getDisplayMode().height;
 
-        mapRelated = new MapRelated(WIDTH, HEIGHT, "Arthur Game");
+        mapRelated = new MapRelated(WIDTH, HEIGHT, "Arthur Game", false);
         batch = new SpriteBatch();
         camera.setToOrtho(true, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 

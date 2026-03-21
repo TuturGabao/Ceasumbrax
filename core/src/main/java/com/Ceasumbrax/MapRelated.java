@@ -3,14 +3,12 @@ package com.Ceasumbrax;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.TextureData;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.utils.Json;
 import com.badlogic.gdx.utils.JsonValue;
 import com.badlogic.gdx.utils.JsonWriter;
 
-import java.io.File;
 import java.util.HashMap;
 
 public class MapRelated {
@@ -20,13 +18,16 @@ public class MapRelated {
     FileHandle filePathGroundRelatedTilesTXT = Gdx.files.internal(pathToGroundRelatedTiles + "files.txt");
     String[] pathToGroundRelatedTilesFiles = filePathGroundRelatedTilesTXT.readString().split("\\r?\\n");
 
+    String pathToGroundRelatedMisc = "GroundRelated/Misc/";
+    FileHandle filePathGroundRelatedMiscTXT = Gdx.files.internal(pathToGroundRelatedMisc + "files.txt");
+    String[] pathToGroundRelatedMiscFiles = filePathGroundRelatedMiscTXT.readString().split("\\r?\\n");
+
     public boolean left;
     public boolean right;
     public boolean up;
     public boolean down;
     public boolean shifted;
 
-    int[][] wholeMap;
     int[][] tiledVisibleIntMap;
 
     int wholeMapChunkWidth = 64;
@@ -43,7 +44,6 @@ public class MapRelated {
 
     int tiledMapWidth;
     int tiledMapHeight;
-    int tileAroundVisibleArea;
 
     int startXTilesVisibleOnScreen;
     int startYTilesVisibleOnScreen;
@@ -57,7 +57,8 @@ public class MapRelated {
     Humans[] humans;
     String gameName;
 
-    HashMap<Integer, TextureRegion> dictionary = new HashMap<>();
+    HashMap<Integer, TextureRegion> tilesDictionary = new HashMap<>();
+    HashMap<Integer, TextureRegion> miscDictionary = new HashMap<>();
 
     /*
     TODO: Finish the all map functions with the chunks.
@@ -67,10 +68,9 @@ public class MapRelated {
             -> if tile > WIDTH + 10% not show, else, show a tile more at the top.
     */
 
-    MapRelated(int resolutionWidth, int resolutionHeight, String GameName) {
-        initialiseTexture();
-
-
+    MapRelated(int resolutionWidth, int resolutionHeight, String GameName, Boolean newGame) {
+        miscDictionary = initialiseTexture(pathToGroundRelatedMiscFiles, pathToGroundRelatedMisc, miscDictionary);
+        tilesDictionary = initialiseTexture(pathToGroundRelatedTilesFiles, pathToGroundRelatedTiles, tilesDictionary);
 
         json.setOutputType(JsonWriter.OutputType.json);
 
@@ -79,7 +79,9 @@ public class MapRelated {
 
         gameName = GameName;
 
-        //createWholeMap(gameName);
+        if (newGame) {
+            createWholeMap(gameName);
+        }
         initialiseTiledMap(gameName);
         initialiseData();
     }
@@ -138,24 +140,12 @@ public class MapRelated {
     public void initialiseData() {
         startXTilesVisibleOnScreen = (resolutionW - tiledMapWidth * tileSize) / 2 + 1;
         startYTilesVisibleOnScreen = (resolutionH - tiledMapHeight * tileSize) / 2 + 1;
-
-        //startTilesTotalX = startXTilesVisibleOnScreen - tileAroundVisibleArea / 2 * tileSize;
-        //startTilesTotalY = startYTilesVisibleOnScreen - tileAroundVisibleArea / 2 * tileSize;
     }
 
-    public void initialiseTexture() {
+    public HashMap<Integer, TextureRegion> initialiseTexture(String[] path, String pathToFile, HashMap<Integer, TextureRegion> dictionary) {
         int count = 0;
-        /*for (FileHandle file : groundRelatedMiscFolder.list()) {
-            groundRelatedMisc[count] = new Texture(file);
-
-            groundRelatedMisc[count].dispose();
-
-            count++;
-        }*/
-        count = 0;
-
-        for (String file : pathToGroundRelatedTilesFiles) {
-            Texture tex = new Texture(pathToGroundRelatedTiles + file);
+        for (String file : path) {
+            Texture tex = new Texture(pathToFile + file);
             TextureRegion region = new TextureRegion(tex);
 
             region.flip(false, true);
@@ -165,6 +155,7 @@ public class MapRelated {
             count++;
         }
 
+        return dictionary;
 
     }
 
@@ -214,7 +205,7 @@ public class MapRelated {
                 int placeTileX = startTilesTotalX + j * tileSize;
                 int placeTileY = startTilesTotalY + i * tileSize;
 
-                TextureRegion tex = dictionary.get(tiledVisibleIntMap[i][j]);
+                TextureRegion tex = tilesDictionary.get(tiledVisibleIntMap[i][j]);
                 if (tex != null) {
                     batch.draw(tex, placeTileX, placeTileY, tileSize, tileSize);
                 } else {
@@ -223,7 +214,6 @@ public class MapRelated {
 
                 }
 
-                // System.out.println(i + " - " + j);
             }
         }
 
@@ -239,7 +229,7 @@ public class MapRelated {
 
                     int tileXPos = k % (tileSize / smallTiledSize) * smallTiledSize + j * tileSize;
                     int tileYPos = k / (tileSize / smallTiledSize) * smallTiledSize + i * tileSize;
-                    batch.draw(dictionary.get(1), tileXPos, tileYPos, smallTiledSize, smallTiledSize);
+                    batch.draw(tilesDictionary.get(1), tileXPos, tileYPos, smallTiledSize, smallTiledSize);
 
                 }
 
