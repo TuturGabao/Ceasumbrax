@@ -60,6 +60,10 @@ public class MapRelated {
     HashMap<Integer, TextureRegion> tilesDictionary = new HashMap<>();
     HashMap<Integer, TextureRegion> miscDictionary = new HashMap<>();
 
+    String activeChunk;
+    int centerXCoord;
+    int centerYCoord;
+
     /*
     TODO: Finish the all map functions with the chunks.
           Save the position of the map.
@@ -69,6 +73,9 @@ public class MapRelated {
     */
 
     MapRelated(int resolutionWidth, int resolutionHeight, String GameName, Boolean newGame) {
+        centerXCoord = resolutionWidth / 2;
+        centerYCoord = resolutionHeight /2;
+
         miscDictionary = initialiseTexture(pathToGroundRelatedMiscFiles, pathToGroundRelatedMisc, miscDictionary);
         tilesDictionary = initialiseTexture(pathToGroundRelatedTilesFiles, pathToGroundRelatedTiles, tilesDictionary);
 
@@ -177,9 +184,51 @@ public class MapRelated {
         }
     }
 
+    public int[][] getTilesToShowChangingStartPoint(int[][] chunk) {
+        //TODO: Fix rendering issue: when moving to left, tiles adds up also to the right.
+
+        int[][] visiblePartTiles;
+
+        int tilesLeftCenter = -5;
+        int tilesUpCenter = -5;
+
+        int useLeftCoord = centerXCoord;
+        int useUpCoord = centerYCoord;
+
+        int useRightCoord = centerXCoord;
+        int useDownCoord = centerYCoord;
+
+        while (useLeftCoord >= 0) {
+            useLeftCoord -= tileSize;
+
+            tilesLeftCenter++;
+        }
+        while (useUpCoord >= 0) {
+            useUpCoord -= tileSize;
+
+            tilesUpCenter++;
+        }
+
+        startTilesTotalX = centerXCoord-tilesLeftCenter*tileSize;
+        startTilesTotalY = centerYCoord-tilesUpCenter*tileSize;
+
+        visiblePartTiles = new int[tilesUpCenter*2][tilesLeftCenter*2];
+
+        for (int i = 0; i < visiblePartTiles.length; i++) {
+            for (int j = 0; j < visiblePartTiles[i].length; j++) {
+                visiblePartTiles[i][j] = chunk[chunk.length / 2 - tilesLeftCenter + j][chunk[i].length / 2 - tilesUpCenter + i];
+            }
+        }
+
+        return  visiblePartTiles;
+
+    }
+
     public int[][] getChunkData(int i, int j, String gameName) {
         System.out.println(i + "-" + j);
         String pathToGameSaves = "Saves/"+gameName+"/";
+
+        activeChunk = i + "-" + j;
 
         FileHandle file = Gdx.files.local(pathToGameSaves + "Chunks/Chunk " + i + "-" + j + ".json");
         JsonValue root = json.fromJson(null, file);
@@ -199,17 +248,19 @@ public class MapRelated {
     }
 
     public int[][] drawTiledMapReturningIntMap(SpriteBatch batch) {
-        for (int i = 0; i < tiledVisibleIntMap.length; i++) {
-            for (int j = 0; j < tiledVisibleIntMap[i].length; j++) {
+        int[][] showingRenderedMap = getTilesToShowChangingStartPoint(tiledVisibleIntMap);
+
+        for (int i = 0; i < showingRenderedMap.length; i++) {
+            for (int j = 0; j < showingRenderedMap[i].length; j++) {
 
                 int placeTileX = startTilesTotalX + j * tileSize;
                 int placeTileY = startTilesTotalY + i * tileSize;
 
-                TextureRegion tex = tilesDictionary.get(tiledVisibleIntMap[i][j]);
+                TextureRegion tex = tilesDictionary.get(showingRenderedMap[i][j]);
                 if (tex != null) {
                     batch.draw(tex, placeTileX, placeTileY, tileSize, tileSize);
                 } else {
-                    System.out.println("INVALID TILE ID: " + tiledVisibleIntMap[i][j]);
+                    System.out.println("INVALID TILE ID: " + showingRenderedMap[i][j]);
                     //batch.draw(dictionary.get(2), placeTileX, placeTileY, tileSize, tileSize);
 
                 }
@@ -256,7 +307,7 @@ public class MapRelated {
             dy /= length;
         }
 
-        startTilesTotalX += (int) (dx * currSpeed * delta);
-        startTilesTotalY += (int) (dy * currSpeed * delta);
+        centerXCoord += (int) (dx * currSpeed * delta);
+        centerYCoord += (int) (dy * currSpeed * delta);
     }
 }
