@@ -6,7 +6,7 @@ import com.badlogic.gdx.Input;
 import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 
@@ -21,7 +21,7 @@ public class CeasumbraxGame extends ApplicationAdapter implements InputProcessor
 
     public int speed;
 
-    private Map map;
+    private MapRelated mapRelated;
     private SpriteBatch batch;
 
     public boolean left;
@@ -38,6 +38,8 @@ public class CeasumbraxGame extends ApplicationAdapter implements InputProcessor
 
     private DataReader dataReader;
 
+    OrthographicCamera camera = new OrthographicCamera();
+
 
     public void init() {
         squareWidth = 80;
@@ -48,8 +50,11 @@ public class CeasumbraxGame extends ApplicationAdapter implements InputProcessor
         WIDTH = Gdx.graphics.getDisplayMode().width;
         HEIGHT = Gdx.graphics.getDisplayMode().height;
 
-        map = new Map(WIDTH, HEIGHT, "Arthur Game");
+        mapRelated = new MapRelated(WIDTH, HEIGHT, "Arthur Game");
         batch = new SpriteBatch();
+        camera.setToOrtho(true, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+
+        batch.setProjectionMatrix(camera.combined);
 
         Gdx.input.setInputProcessor(this);
 
@@ -61,7 +66,7 @@ public class CeasumbraxGame extends ApplicationAdapter implements InputProcessor
 
         dataReader = new DataReader("Arthur Game");
 
-        Gdx.graphics.setWindowedMode(WIDTH, HEIGHT);
+        // Gdx.graphics.setWindowedMode(WIDTH, HEIGHT);
 
         shapeRenderer = new ShapeRenderer();
     }
@@ -83,7 +88,7 @@ public class CeasumbraxGame extends ApplicationAdapter implements InputProcessor
 
         batch.begin();
 
-        int[][] tiledMap = map.drawTiledMapReturningIntMap(batch);
+        int[][] tiledMap = mapRelated.drawTiledMapReturningIntMap(batch);
 
         batch.end();
 
@@ -96,13 +101,13 @@ public class CeasumbraxGame extends ApplicationAdapter implements InputProcessor
 
     public void handleMovement(float delta) {
 
-        map.left = left;
-        map.right = right;
-        map.up = up;
-        map.down = down;
-        map.shifted = shifted;
+        mapRelated.left = left;
+        mapRelated.right = right;
+        mapRelated.up = up;
+        mapRelated.down = down;
+        mapRelated.shifted = shifted;
 
-        map.handleMapMovement(delta);
+        mapRelated.handleMapMovement(delta);
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
 

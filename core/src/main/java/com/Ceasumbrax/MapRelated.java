@@ -1,27 +1,24 @@
 package com.Ceasumbrax;
 
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.Input;
-import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.TextureData;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.utils.Json;
 import com.badlogic.gdx.utils.JsonValue;
 import com.badlogic.gdx.utils.JsonWriter;
 
 import java.io.File;
-import java.util.Arrays;
 import java.util.HashMap;
 
-public class Map {
+public class MapRelated {
     Json json = new Json();
 
-    FileHandle groundRelatedMiscFolder = Gdx.files.internal("GroundRelated/Misc/");
-    Texture[] groundRelatedMisc = new Texture[groundRelatedMiscFolder.list().length];
-
-    FileHandle groundRelatedTilesFolder = Gdx.files.internal("GroundRelated/Tiles/");
-    Texture[] groundRelatedTiles = new Texture[groundRelatedTilesFolder.list().length];
+    String pathToGroundRelatedTiles = "GroundRelated/Tiles/";
+    FileHandle filePathGroundRelatedTilesTXT = Gdx.files.internal(pathToGroundRelatedTiles + "files.txt");
+    String[] pathToGroundRelatedTilesFiles = filePathGroundRelatedTilesTXT.readString().split("\\r?\\n");
 
     public boolean left;
     public boolean right;
@@ -60,7 +57,7 @@ public class Map {
     Humans[] humans;
     String gameName;
 
-    HashMap<Integer, Texture> dictionary = new HashMap<>();
+    HashMap<Integer, TextureRegion> dictionary = new HashMap<>();
 
     /*
     TODO: Finish the all map functions with the chunks.
@@ -70,8 +67,10 @@ public class Map {
             -> if tile > WIDTH + 10% not show, else, show a tile more at the top.
     */
 
-    Map(int resolutionWidth, int resolutionHeight, String GameName) {
-        initializeTexture();
+    MapRelated(int resolutionWidth, int resolutionHeight, String GameName) {
+        initialiseTexture();
+
+
 
         json.setOutputType(JsonWriter.OutputType.json);
 
@@ -81,8 +80,8 @@ public class Map {
         gameName = GameName;
 
         //createWholeMap(gameName);
-        initializeTiledMap(gameName);
-        initializeData();
+        initialiseTiledMap(gameName);
+        initialiseData();
     }
 
     public void createWholeMap(String gameName) {
@@ -136,7 +135,7 @@ public class Map {
         return newChunk;
     }
 
-    public void initializeData() {
+    public void initialiseData() {
         startXTilesVisibleOnScreen = (resolutionW - tiledMapWidth * tileSize) / 2 + 1;
         startYTilesVisibleOnScreen = (resolutionH - tiledMapHeight * tileSize) / 2 + 1;
 
@@ -144,29 +143,24 @@ public class Map {
         //startTilesTotalY = startYTilesVisibleOnScreen - tileAroundVisibleArea / 2 * tileSize;
     }
 
-    public void initializeTexture() {
+    public void initialiseTexture() {
         int count = 0;
-        for (FileHandle file : groundRelatedMiscFolder.list()) {
+        /*for (FileHandle file : groundRelatedMiscFolder.list()) {
             groundRelatedMisc[count] = new Texture(file);
 
             groundRelatedMisc[count].dispose();
 
             count++;
-        }
+        }*/
         count = 0;
 
-        if (!groundRelatedTilesFolder.exists()) {
-            System.out.println("Folder not found!");
-        }
+        for (String file : pathToGroundRelatedTilesFiles) {
+            Texture tex = new Texture(pathToGroundRelatedTiles + file);
+            TextureRegion region = new TextureRegion(tex);
 
-        FileHandle[] files = groundRelatedTilesFolder.list(); //URGENT TODO: Fix this function, not getting any png files and making the program stop fully
-        for (FileHandle file : files) {
-            Texture tex = new Texture(file);
-            groundRelatedTiles[count] = tex;
+            region.flip(false, true);
 
-            dictionary.put((count + 1), tex);
-
-
+            dictionary.put((count + 1), region);
 
             count++;
         }
@@ -174,7 +168,7 @@ public class Map {
 
     }
 
-    public void initializeTiledMap(String gameName) {
+    public void initialiseTiledMap(String gameName) {
         int[][] chunkData = getChunkData(wholeMapChunkWidth/2-1, wholeMapChunkHeight/2-1, gameName);
 
         int centerX = resolutionW / 2; // - tileSize / 2; //// INFO: We do not remove half the size of a tile because the number of tile is even.
@@ -220,7 +214,7 @@ public class Map {
                 int placeTileX = startTilesTotalX + j * tileSize;
                 int placeTileY = startTilesTotalY + i * tileSize;
 
-                Texture tex = dictionary.get(tiledVisibleIntMap[i][j]);
+                TextureRegion tex = dictionary.get(tiledVisibleIntMap[i][j]);
                 if (tex != null) {
                     batch.draw(tex, placeTileX, placeTileY, tileSize, tileSize);
                 } else {
@@ -229,11 +223,11 @@ public class Map {
 
                 }
 
-                System.out.println(i + " - " + j);
+                // System.out.println(i + " - " + j);
             }
         }
 
-        drawSmalledTiledPlacingMap(batch);
+        // drawSmalledTiledPlacingMap(batch);
 
         return tiledVisibleIntMap;
     }
@@ -243,8 +237,8 @@ public class Map {
             for (int j = 0; j < tiledVisibleIntMap[i].length; j++) {
                 for (int k = 0; k < (tileSize / smallTiledSize)*(tileSize/smallTiledSize); k++) {
 
-                    int tileXPos = k % (tileSize / smallTiledSize) * smallTiledSize + i * tileSize;
-                    int tileYPos = k / (tileSize / smallTiledSize) * smallTiledSize + j * tileSize;
+                    int tileXPos = k % (tileSize / smallTiledSize) * smallTiledSize + j * tileSize;
+                    int tileYPos = k / (tileSize / smallTiledSize) * smallTiledSize + i * tileSize;
                     batch.draw(dictionary.get(1), tileXPos, tileYPos, smallTiledSize, smallTiledSize);
 
                 }
@@ -261,8 +255,8 @@ public class Map {
 
         if (left) dx += 1;
         if (right) dx -= 1;
-        if (up) dy -= 1;
-        if (down) dy += 1;
+        if (up) dy += 1;
+        if (down) dy -= 1;
         if (shifted) currSpeed = (int) (currSpeed * speedShiftMultiplier);
 
         float length = (float)Math.sqrt(dx * dx + dy * dy);
