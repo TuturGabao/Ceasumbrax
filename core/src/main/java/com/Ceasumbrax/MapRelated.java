@@ -64,6 +64,9 @@ public class MapRelated {
     int centerXCoord;
     int centerYCoord;
 
+    int chunkBaseRow;
+    int chunkBaseCol;
+
     /*
     TODO: Finish the all map functions with the chunks.
           Save the position of the map.
@@ -167,7 +170,9 @@ public class MapRelated {
     }
 
     public void initialiseTiledMap(String gameName) {
-        int[][] chunkData = getChunkData(wholeMapChunkWidth/2-1, wholeMapChunkHeight/2-1, gameName);
+        chunkBaseCol = wholeMapChunkWidth/2-1;
+        chunkBaseRow = wholeMapChunkHeight/2-1;
+        int[][] chunkData = getChunkData(chunkBaseRow, chunkBaseCol, gameName);
 
         int centerX = resolutionW / 2; // - tileSize / 2; //// INFO: We do not remove half the size of a tile because the number of tile is even.
         int centerY = resolutionH / 2; // - tileSize / 2;
@@ -185,43 +190,48 @@ public class MapRelated {
     }
 
     public int[][] getTilesToShowChangingStartPoint(int[][] chunk) {
-        //TODO: Fix rendering issue: when moving to left, tiles adds up also to the right.
+        //TODO: Add the loading of around chunks when leaving a new one, have to handle 2 cases, when on 2 chunk (either Y axis or X axis) or 3 chunks (center, Y and X)
+        int aroundTilesOffset = 2;
 
-        int[][] visiblePartTiles;
+        int centerX = centerXCoord;
+        int centerY = centerYCoord;
 
-        int tilesLeftCenter = -5;
-        int tilesUpCenter = -5;
+        int numbTilesLeft  = centerX / tileSize + aroundTilesOffset;
+        int numbTilesUp    = centerY / tileSize + aroundTilesOffset;
+        int numbTilesRight = (resolutionW  - centerX) / tileSize + aroundTilesOffset;
+        int numbTilesDown  = (resolutionH - centerY) / tileSize + aroundTilesOffset;
 
-        int useLeftCoord = centerXCoord;
-        int useUpCoord = centerYCoord;
+        startTilesTotalX = centerX - numbTilesLeft * tileSize;
+        startTilesTotalY = centerY - numbTilesUp * tileSize;
 
-        int useRightCoord = centerXCoord;
-        int useDownCoord = centerYCoord;
+        int rows = numbTilesUp + numbTilesDown;
+        int cols = numbTilesLeft + numbTilesRight;
 
-        while (useLeftCoord >= 0) {
-            useLeftCoord -= tileSize;
+        int[][] visibleTiles = new int[rows][cols];
 
-            tilesLeftCenter++;
-        }
-        while (useUpCoord >= 0) {
-            useUpCoord -= tileSize;
+        int chunkCenterRow = chunk.length / 2;
+        int chunkCenterCol = chunk[0].length / 2;
 
-            tilesUpCenter++;
-        }
+        int chunkRow = 32;
+        int chunkCol = 32;
 
-        startTilesTotalX = centerXCoord-tilesLeftCenter*tileSize;
-        startTilesTotalY = centerYCoord-tilesUpCenter*tileSize;
+        for (int i = 0 ; i < rows ; i++ ) {
+            for (int j = 0 ; j < cols ; j++) {
+                chunkRow = chunkCenterRow - numbTilesUp + i;
+                chunkCol = chunkCenterCol - numbTilesLeft + j;
 
-        visiblePartTiles = new int[tilesUpCenter*2][tilesLeftCenter*2];
+                if (chunkRow >= 0 && chunkRow <= chunk.length &&
+                    chunkCol >= 0 && chunkCol <= chunk[chunkRow].length) {
 
-        for (int i = 0; i < visiblePartTiles.length; i++) {
-            for (int j = 0; j < visiblePartTiles[i].length; j++) {
-                visiblePartTiles[i][j] = chunk[chunk.length / 2 - tilesLeftCenter + j][chunk[i].length / 2 - tilesUpCenter + i];
+                    visibleTiles[i][j] = chunk[chunkRow][chunkCol];
+                } else {
+                    visibleTiles[i][j] = 0;
+
+                }
             }
         }
 
-        return  visiblePartTiles;
-
+        return visibleTiles;
     }
 
     public int[][] getChunkData(int i, int j, String gameName) {
@@ -248,6 +258,7 @@ public class MapRelated {
     }
 
     public int[][] drawTiledMapReturningIntMap(SpriteBatch batch) {
+
         int[][] showingRenderedMap = getTilesToShowChangingStartPoint(tiledVisibleIntMap);
 
         for (int i = 0; i < showingRenderedMap.length; i++) {
@@ -260,11 +271,10 @@ public class MapRelated {
                 if (tex != null) {
                     batch.draw(tex, placeTileX, placeTileY, tileSize, tileSize);
                 } else {
-                    System.out.println("INVALID TILE ID: " + showingRenderedMap[i][j]);
+                    //System.out.println("INVALID TILE ID: " + showingRenderedMap[i][j]);
                     //batch.draw(dictionary.get(2), placeTileX, placeTileY, tileSize, tileSize);
 
                 }
-
             }
         }
 
