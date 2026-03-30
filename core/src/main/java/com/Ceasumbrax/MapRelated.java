@@ -60,12 +60,14 @@ public class MapRelated {
     HashMap<Integer, TextureRegion> tilesDictionary = new HashMap<>();
     HashMap<Integer, TextureRegion> miscDictionary = new HashMap<>();
 
-    String activeChunk;
+    int[] activeChunk;
     int centerXCoord;
     int centerYCoord;
 
     int chunkBaseRow;
     int chunkBaseCol;
+
+    int[][] aroundChunk;
 
     /*
     TODO: Finish the all map functions with the chunks.
@@ -76,8 +78,9 @@ public class MapRelated {
     */
 
     MapRelated(int resolutionWidth, int resolutionHeight, String GameName, Boolean newGame) {
-        centerXCoord = resolutionWidth / 2;
-        centerYCoord = resolutionHeight /2;
+        centerXCoord = resolutionWidth / 2; //ResWidth = 1920
+        centerYCoord = resolutionHeight /2; //ResHeight = 1080
+
 
         miscDictionary = initialiseTexture(pathToGroundRelatedMiscFiles, pathToGroundRelatedMisc, miscDictionary);
         tilesDictionary = initialiseTexture(pathToGroundRelatedTilesFiles, pathToGroundRelatedTiles, tilesDictionary);
@@ -189,8 +192,38 @@ public class MapRelated {
         }
     }
 
+    public int[][] getAroundChunk(int[][] chunk, int tilesAroundBeforeLoading /*, int nbTilesUp, int nbTilesDown, int nbTilesLeft, int nbTilesRight*/) {
+
+        boolean up = false;
+        boolean down = false;
+        boolean right = false;
+        boolean left = false;
+
+        int wholeMapLeftBorder = centerXCoord - chunk[0].length/2*tileSize;
+        int wholeMapRightBorder = centerXCoord + chunk[0].length/2*tileSize;
+
+        int wholeMapUpBorder = centerYCoord - chunk.length/2*tileSize;
+        int wholeMapDownBorder = centerYCoord + chunk.length/2*tileSize;
+
+        if (wholeMapLeftBorder > -tilesAroundBeforeLoading * tileSize) {
+            System.out.println("LEFT");
+        }
+        if (wholeMapRightBorder < resolutionW-tilesAroundBeforeLoading * tileSize) {
+            System.out.println("RIGHT");
+        }
+        if (wholeMapUpBorder > -tilesAroundBeforeLoading * tileSize) {
+            System.out.println("UP");
+        }
+        if (wholeMapDownBorder < resolutionH-tilesAroundBeforeLoading * tileSize) {
+            System.out.println("DOWN");
+        }
+
+
+        return new int[1][1];
+    }
+
     public int[][] getTilesToShowChangingStartPoint(int[][] chunk) {
-        //TODO: Add the loading of around chunks when leaving a new one, have to handle 2 cases, when on 2 chunk (either Y axis or X axis) or 3 chunks (center, Y and X)
+        //TODO: Add the loading of around chunks when leaving a new one, have to handle 2 cases, when on 2 chunk (either Y axis or X axis) or 4 chunks (center, Y, X and the center of Y and X)
         int aroundTilesOffset = 2;
 
         int centerX = centerXCoord;
@@ -203,6 +236,8 @@ public class MapRelated {
 
         startTilesTotalX = centerX - numbTilesLeft * tileSize;
         startTilesTotalY = centerY - numbTilesUp * tileSize;
+
+        getAroundChunk(chunk, aroundTilesOffset);
 
         int rows = numbTilesUp + numbTilesDown;
         int cols = numbTilesLeft + numbTilesRight;
@@ -220,8 +255,8 @@ public class MapRelated {
                 chunkRow = chunkCenterRow - numbTilesUp + i;
                 chunkCol = chunkCenterCol - numbTilesLeft + j;
 
-                if (chunkRow >= 0 && chunkRow <= chunk.length &&
-                    chunkCol >= 0 && chunkCol <= chunk[chunkRow].length) {
+                if (chunkRow >= 0 && chunkRow < chunk.length &&
+                    chunkCol >= 0 && chunkCol < chunk[chunkRow].length) {
 
                     visibleTiles[i][j] = chunk[chunkRow][chunkCol];
                 } else {
@@ -238,7 +273,7 @@ public class MapRelated {
         System.out.println(i + "-" + j);
         String pathToGameSaves = "Saves/"+gameName+"/";
 
-        activeChunk = i + "-" + j;
+        activeChunk = new int[]{i, j};
 
         FileHandle file = Gdx.files.local(pathToGameSaves + "Chunks/Chunk " + i + "-" + j + ".json");
         JsonValue root = json.fromJson(null, file);
