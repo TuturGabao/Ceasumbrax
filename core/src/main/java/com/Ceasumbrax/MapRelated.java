@@ -11,6 +11,8 @@ import com.badlogic.gdx.utils.JsonWriter;
 
 import java.util.HashMap;
 
+import static java.lang.Math.abs;
+
 public class MapRelated {
     Json json = new Json();
 
@@ -66,8 +68,24 @@ public class MapRelated {
 
     int chunkBaseRow;
     int chunkBaseCol;
+    int aroundTilesOffset = -1;
 
     int[][] aroundChunk;
+
+    int[][][] aroundChunks = new int[3][][];
+
+    public boolean leftBuff;
+    public boolean rightBuff;
+    public boolean upBuff;
+    public boolean downBuff;
+
+    public int[][][] bufferedDataChunk;
+    boolean changedChunk = false;
+    int[][] newChunkVisibleTiles;
+    int newStartXForNewChunk;
+    int newStartYForNewChunk;
+
+    HashMap<String, int[]> positionsToRelativeCoord = new HashMap<>();
 
     /*
     TODO: Finish the all map functions with the chunks.
@@ -81,9 +99,9 @@ public class MapRelated {
         centerXCoord = resolutionWidth / 2; //ResWidth = 1920
         centerYCoord = resolutionHeight /2; //ResHeight = 1080
 
-
         miscDictionary = initialiseTexture(pathToGroundRelatedMiscFiles, pathToGroundRelatedMisc, miscDictionary);
         tilesDictionary = initialiseTexture(pathToGroundRelatedTilesFiles, pathToGroundRelatedTiles, tilesDictionary);
+        initialisePositionMap();
 
         json.setOutputType(JsonWriter.OutputType.json);
 
@@ -97,6 +115,18 @@ public class MapRelated {
         }
         initialiseTiledMap(gameName);
         initialiseData();
+    }
+
+    public void initialisePositionMap() {
+        positionsToRelativeCoord.put("UP", new int[]{0, -1});
+        positionsToRelativeCoord.put("DOWN", new int[]{0, 1});
+        positionsToRelativeCoord.put("RIGHT", new int[]{1, 0});
+        positionsToRelativeCoord.put("LEFT", new int[]{-1, 0});
+
+        positionsToRelativeCoord.put("UP-LEFT", new int[]{-1, -1});
+        positionsToRelativeCoord.put("UP-RIGHT", new int[]{1, -1});
+        positionsToRelativeCoord.put("DOWN-LEFT", new int[]{-1, 1});
+        positionsToRelativeCoord.put("DOWN-RIGHT", new int[]{1, 1});
     }
 
     public void createWholeMap(String gameName) {
@@ -175,6 +205,7 @@ public class MapRelated {
     public void initialiseTiledMap(String gameName) {
         chunkBaseCol = wholeMapChunkWidth/2-1;
         chunkBaseRow = wholeMapChunkHeight/2-1;
+
         int[][] chunkData = getChunkData(chunkBaseRow, chunkBaseCol, gameName);
 
         int centerX = resolutionW / 2; // - tileSize / 2; //// INFO: We do not remove half the size of a tile because the number of tile is even.
@@ -192,7 +223,7 @@ public class MapRelated {
         }
     }
 
-    public int[][] getAroundChunk(int[][] chunk, int tilesAroundBeforeLoading /*, int nbTilesUp, int nbTilesDown, int nbTilesLeft, int nbTilesRight*/) {
+    public Object[] getAroundChunk(int[][] chunk, int tilesAroundBeforeLoading /*, int nbTilesUp, int nbTilesDown, int nbTilesLeft, int nbTilesRight*/) {
 
         boolean up = false;
         boolean down = false;
@@ -206,38 +237,151 @@ public class MapRelated {
         int wholeMapDownBorder = centerYCoord + chunk.length/2*tileSize;
 
         if (wholeMapLeftBorder > -tilesAroundBeforeLoading * tileSize) {
-            System.out.println("LEFT");
+            left = true;
         }
         if (wholeMapRightBorder < resolutionW-tilesAroundBeforeLoading * tileSize) {
-            System.out.println("RIGHT");
+            right = true;
         }
         if (wholeMapUpBorder > -tilesAroundBeforeLoading * tileSize) {
-            System.out.println("UP");
+            up = true;
         }
         if (wholeMapDownBorder < resolutionH-tilesAroundBeforeLoading * tileSize) {
-            System.out.println("DOWN");
+            down = true;
+        }
+
+        int i = 0;
+        int sum = 0;
+
+        if (up) sum++;
+        if (down) sum++;
+        if (right) sum++;
+        if (left) sum++;
+
+        if (left && up) sum++;
+        if (left && down) sum++;
+        if (right && up) sum++;
+        if (right && down) sum++;
+
+        bufferedDataChunk = aroundChunks.clone();
+
+        aroundChunks = new int[sum][][];
+        String[] positions = new String[sum];
+
+        if (up) {
+            if (!upBuff) {
+                aroundChunks[i] = getChunkData(chunkBaseRow-1, chunkBaseCol, gameName);
+            } else {aroundChunks[i] = bufferedDataChunk[i];} positions[i] = "UP"; i++;}
+
+        if (down) {
+            if (!downBuff) {
+                aroundChunks[i] = getChunkData(chunkBaseRow+1, chunkBaseCol, gameName);
+            } else {aroundChunks[i] = bufferedDataChunk[i];} positions[i] = "DOWN"; i++;}
+
+        if (right) {
+            if (!rightBuff) {
+                aroundChunks[i] = getChunkData(chunkBaseRow, chunkBaseCol+1, gameName);
+            } else {aroundChunks[i] = bufferedDataChunk[i];} positions[i] = "RIGHT"; i++;}
+
+        if (left) {
+            if (!leftBuff) {
+                aroundChunks[i] = getChunkData(chunkBaseRow, chunkBaseCol-1, gameName);
+            } else {aroundChunks[i] = bufferedDataChunk[i];} positions[i] = "LEFT"; i++;}
+
+        //Handling of diagonal
+        if (left && up) {
+            if (!(leftBuff && upBuff)) {
+                aroundChunks[i] = getChunkData(chunkBaseRow-1, chunkBaseCol-1, gameName);
+            } else {aroundChunks[i] = bufferedDataChunk[i];} positions[i] = "UP-LEFT"; i++;}
+
+        if (left && down) {
+            if (!(leftBuff && downBuff)) {
+                aroundChunks[i] = getChunkData(chunkBaseRow+1, chunkBaseCol-1, gameName);
+            } else {aroundChunks[i] = bufferedDataChunk[i];} positions[i] = "DOWN-LEFT"; i++;}
+
+        if (right && up) {
+            if (!(rightBuff && upBuff)) {
+                aroundChunks[i] = getChunkData(chunkBaseRow-1, chunkBaseCol+1, gameName);
+            } else {aroundChunks[i] = bufferedDataChunk[i];} positions[i] = "UP-RIGHT"; i++;}
+
+        if (right && down) {
+            if (!(rightBuff && downBuff)) {
+                aroundChunks[i] = getChunkData(chunkBaseRow+1, chunkBaseCol+1, gameName);
+            } else {aroundChunks[i] = bufferedDataChunk[i];} positions[i] = "DOWN-RIGHT"; i++;}
+
+        upBuff = up;
+        downBuff = down;
+        leftBuff = left;
+        rightBuff = right;
+
+        return new Object[]{positions, aroundChunks};
+    }
+
+    public Object[][] drawAroundChunksBasedOfCenter(int[][][] aroundChunks, String[] positions) {
+        /*TODO: Resolve bug when switching chunk, doesn't render properly,
+        *   remove a whole chunk.
+        *       Debug session to see why not loading. A whole chunk is missing:
+        *       see the buffers, "visibleTiles" and "tiledVisibleIntMap".
+        */
+        changedChunk = false;
+        Object[][] objectsToReturn = new Object[positions.length][];
+
+        int i = 0;
+        for (String pos: positions) {
+            int[][] aroundChunk = aroundChunks[i];
+
+            int[] vector = positionsToRelativeCoord.get(pos);
+
+            int newCenterX = centerXCoord + vector[0] * chunkWidth * tileSize;
+            int newCenterY = centerYCoord + vector[1] * chunkHeight * tileSize;
+
+            Object[] returnObjects = getTilesToShow(aroundChunk, newCenterX, newCenterY, false);
+
+            int[][] visibleTiles = (int[][]) returnObjects[0];
+            int newStartX = (int) returnObjects[1];
+            int newStartY = (int) returnObjects[2];
+
+            objectsToReturn[i] = new Object[]{visibleTiles, newStartX, newStartY};
+
+            if (abs(centerXCoord - resolutionW / 2) > abs(newCenterX - resolutionW / 2)) {
+                chunkBaseCol += vector[0];
+                centerXCoord = newCenterX;
+                changedChunk = true;
+                newChunkVisibleTiles = visibleTiles;
+                newStartXForNewChunk = newStartX;
+                newStartYForNewChunk = newStartY;
+            }
+            if (abs(centerYCoord - resolutionH / 2) > abs(newCenterY - resolutionH / 2)) {
+                chunkBaseRow += vector[1];
+                centerYCoord = newCenterY;
+                changedChunk = true;
+                newChunkVisibleTiles = visibleTiles;
+                newStartXForNewChunk = newStartX;
+                newStartYForNewChunk = newStartY;
+            }
+
+            if (changedChunk) {
+                System.out.println("CURR CHUNK: " + chunkBaseRow + "-" + chunkBaseCol);
+                System.out.println("LEFT CHUNK CENTER COORD: " + newCenterX + "-" + newStartY);
+                System.out.println("CURR CHUNK CENTER COORD: " + centerXCoord + "-" + centerYCoord);
+            }
+            i++;
         }
 
 
-        return new int[1][1];
+        return objectsToReturn;
+
     }
 
-    public int[][] getTilesToShowChangingStartPoint(int[][] chunk) {
-        //TODO: Add the loading of around chunks when leaving a new one, have to handle 2 cases, when on 2 chunk (either Y axis or X axis) or 4 chunks (center, Y, X and the center of Y and X)
-        int aroundTilesOffset = 2;
+    public Object[] getTilesToShow(int[][] chunk, int chunkCenterX, int chunkCenterY, boolean invert) {
 
-        int centerX = centerXCoord;
-        int centerY = centerYCoord;
+        int numbTilesLeft = chunkCenterX / tileSize + aroundTilesOffset;
+        int numbTilesUp = chunkCenterY / tileSize + aroundTilesOffset;
+        int numbTilesRight = (resolutionW - chunkCenterX) / tileSize + aroundTilesOffset;
+        int numbTilesDown = (resolutionH - chunkCenterY) / tileSize + aroundTilesOffset;
 
-        int numbTilesLeft  = centerX / tileSize + aroundTilesOffset;
-        int numbTilesUp    = centerY / tileSize + aroundTilesOffset;
-        int numbTilesRight = (resolutionW  - centerX) / tileSize + aroundTilesOffset;
-        int numbTilesDown  = (resolutionH - centerY) / tileSize + aroundTilesOffset;
 
-        startTilesTotalX = centerX - numbTilesLeft * tileSize;
-        startTilesTotalY = centerY - numbTilesUp * tileSize;
-
-        getAroundChunk(chunk, aroundTilesOffset);
+        int startTilesTotalX = chunkCenterX - numbTilesLeft * tileSize;
+        int startTilesTotalY = chunkCenterY - numbTilesUp * tileSize;
 
         int rows = numbTilesUp + numbTilesDown;
         int cols = numbTilesLeft + numbTilesRight;
@@ -247,8 +391,8 @@ public class MapRelated {
         int chunkCenterRow = chunk.length / 2;
         int chunkCenterCol = chunk[0].length / 2;
 
-        int chunkRow = 32;
-        int chunkCol = 32;
+        int chunkRow;
+        int chunkCol;
 
         for (int i = 0 ; i < rows ; i++ ) {
             for (int j = 0 ; j < cols ; j++) {
@@ -266,7 +410,7 @@ public class MapRelated {
             }
         }
 
-        return visibleTiles;
+        return new Object[]{visibleTiles, startTilesTotalX, startTilesTotalY};
     }
 
     public int[][] getChunkData(int i, int j, String gameName) {
@@ -294,15 +438,58 @@ public class MapRelated {
 
     public int[][] drawTiledMapReturningIntMap(SpriteBatch batch) {
 
-        int[][] showingRenderedMap = getTilesToShowChangingStartPoint(tiledVisibleIntMap);
+        Object[] returnObjects = getTilesToShow(tiledVisibleIntMap, centerXCoord, centerYCoord, false);
 
-        for (int i = 0; i < showingRenderedMap.length; i++) {
-            for (int j = 0; j < showingRenderedMap[i].length; j++) {
+        int[][] showingRenderedMap = (int[][]) returnObjects[0];
 
-                int placeTileX = startTilesTotalX + j * tileSize;
-                int placeTileY = startTilesTotalY + i * tileSize;
+        startTilesTotalX = (int) returnObjects[1];
+        startTilesTotalY = (int) returnObjects[2];
 
-                TextureRegion tex = tilesDictionary.get(showingRenderedMap[i][j]);
+        drawChunk(showingRenderedMap, startTilesTotalX, startTilesTotalY, batch);
+
+        Object[] aroundChunkData = getAroundChunk(tiledVisibleIntMap, aroundTilesOffset);
+
+        String[] positions = (String[]) aroundChunkData[0];
+        int[][][] aroundChunks = (int[][][]) aroundChunkData[1];
+
+        Object[][] aroundChunksReturnObjects = drawAroundChunksBasedOfCenter(aroundChunks, positions);
+
+        for (Object[] currAroundChunkData: aroundChunksReturnObjects) {
+            int[][] aroundChunk = (int[][]) currAroundChunkData[0];
+            int currChunkStartX = (int) currAroundChunkData[1];
+            int currChunkStartY = (int) currAroundChunkData[2];
+
+            drawChunk(aroundChunk, currChunkStartX, currChunkStartY, batch);
+        }
+
+        // drawSmalledTiledPlacingMap(batch);
+
+        System.out.println("BEFORE SWITCH - centerX: " + centerXCoord + " centerY: " + centerYCoord);
+        System.out.println("BEFORE SWITCH - chunkBase: " + chunkBaseRow + "-" + chunkBaseCol);
+        System.out.println("BEFORE SWITCH - startX: " + startTilesTotalX + " startY: " + startTilesTotalY);
+
+        if (changedChunk) {
+            tiledVisibleIntMap = newChunkVisibleTiles;
+            startTilesTotalX = newStartXForNewChunk;
+            startTilesTotalY = newStartYForNewChunk;
+
+            System.out.println("AFTER SWITCH - centerX: " + centerXCoord + " centerY: " + centerYCoord);
+            System.out.println("AFTER SWITCH - startX: " + startTilesTotalX + " startY: " + startTilesTotalY);
+            System.out.println("AFTER SWITCH - tiledVisibleIntMap size: " + tiledVisibleIntMap.length + "x" + tiledVisibleIntMap[0].length);
+        }
+
+        return tiledVisibleIntMap;
+    }
+
+    public void drawChunk(int[][] chunk, int startX, int startY, SpriteBatch batch) {
+
+        for (int i = 0; i < chunk.length; i++) {
+            for (int j = 0; j < chunk[i].length; j++) {
+
+                int placeTileX = startX + j * tileSize;
+                int placeTileY = startY + i * tileSize;
+
+                TextureRegion tex = tilesDictionary.get(chunk[i][j]);
                 if (tex != null) {
                     batch.draw(tex, placeTileX, placeTileY, tileSize, tileSize);
                 } else {
@@ -311,11 +498,8 @@ public class MapRelated {
 
                 }
             }
+
         }
-
-        // drawSmalledTiledPlacingMap(batch);
-
-        return tiledVisibleIntMap;
     }
 
     public void drawSmalledTiledPlacingMap(SpriteBatch batch) {    //// This will be only used for debug purposes
